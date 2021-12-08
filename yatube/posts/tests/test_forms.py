@@ -64,8 +64,10 @@ class PostFormTest(TestCase):
         )
         self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertRedirects(
-                response,
-                reverse('posts:profile', kwargs={'username': PostFormTest.user}))
+            response,
+            reverse(
+                'posts:profile',
+                kwargs={'username': PostFormTest.user}))
         self.assertEqual(Post.objects.count(), posts_count + 1)
 
         pk = Post.objects.first().pk
@@ -114,7 +116,8 @@ class PostFormTest(TestCase):
             reverse('posts:post_detail', kwargs={'post_id': pk}))
 
     def test_non_login_user_redirects(self):
-        """Неавторизованного пользователя перенаправляет на страницу авторизации."""
+        """Неавторизованного пользователя
+        перенаправляет на страницу авторизации."""
         posts_count = Post.objects.count()
         form_data = {
             'text': 'Тестовый текст',

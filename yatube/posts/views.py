@@ -36,8 +36,11 @@ def profile(request, username):
     user_obj = get_object_or_404(User, username=username)
     posts = user_obj.posts.all()
     posts_number = posts.count()
-    if (request.user.is_authenticated and
-            Follow.objects.filter(user=request.user, author=user_obj).exists()):
+    if (request.user.is_authenticated
+            and Follow.objects.filter(
+                user=request.user,
+                author=user_obj
+            ).exists()):
         following = True
     else:
         following = False
@@ -131,8 +134,12 @@ def follow_index(request):
 def profile_follow(request, username):
     user = get_object_or_404(User, username=request.user.username)
     user_to_follow = get_object_or_404(User, username=username)
-    if user != user_to_follow and not Follow.objects.filter(user=user, author=user_to_follow).exists():
-        Follow.objects.create(user=user, author=user_to_follow)
+    if user != user_to_follow:
+        if not Follow.objects.filter(
+                user=user,
+                author=user_to_follow
+        ).exists():
+            Follow.objects.create(user=user, author=user_to_follow)
     return redirect('posts:profile', username=user_to_follow)
 
 

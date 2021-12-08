@@ -17,6 +17,13 @@ from posts.forms import PostForm
 User = get_user_model()
 
 
+def create_redirect_url(target_view, redirect_view, kwargs):
+    url = (reverse(target_view)
+           + '?next='
+           + reverse(redirect_view, kwargs=kwargs))
+    return url
+
+
 class PostPagesTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -323,21 +330,28 @@ class CommentTest(TestCase):
         self.authorized_client.force_login(CommentTest.user)
 
     def test_create_comment(self):
+        """Комментарий может создать только авторизованный пользователь."""
         form_data = {'text': 'Test_comment_text'}
         response = self.unauthorized_client.post(
-            reverse('posts:add_comment', kwargs={'post_id': CommentTest.post.id}),
+            reverse(
+                'posts:add_comment',
+                kwargs={'post_id': CommentTest.post.id}),
             data=form_data,
             follow=True)
-        self.assertRedirects(response,
-                             (reverse('users:login')
-                              + '?next='
-                              + reverse('posts:add_comment', kwargs={'post_id': CommentTest.post.id})))
+        self.assertRedirects(response, create_redirect_url(
+            'users:login',
+            'posts:add_comment',
+            {'post_id': CommentTest.post.id}))
         self.authorized_client.post(
-            reverse('posts:add_comment', kwargs={'post_id': CommentTest.post.id}),
+            reverse(
+                'posts:add_comment',
+                kwargs={'post_id': CommentTest.post.id}),
             data=form_data,
             follow=True
         )
-        response = self.authorized_client.get(reverse('posts:post_detail', kwargs={'post_id': CommentTest.post.id}))
+        response = self.authorized_client.get(reverse(
+            'posts:post_detail',
+            kwargs={'post_id': CommentTest.post.id}))
         first_comment_text = response.context['comments'][0].text
         self.assertEqual(first_comment_text, form_data['text'])
 
@@ -361,6 +375,7 @@ class CacheTest(TestCase):
         self.unauthorized_client = Client()
 
     def test_cache_index_page(self):
+        """Посты на главной странице хранятся в кэше."""
         self.assertContains(
             self.unauthorized_client.get(reverse('posts:index')),
             CacheTest.post.text
@@ -382,7 +397,10 @@ class FollowTest(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create_user(username='Test_user')
-        cls.user_to_follow = User.objects.create_user(username='User_to_follow')
+        cls.user_to_follow = User.objects.create_user(
+            username='User_to_follow'
+        )
+        cls.kwargs_follow = {'username': cls.user_to_follow.username}
         cls.group = Group.objects.create(
             title='Тестовая группа',
             slug='test_slug')
@@ -399,21 +417,28 @@ class FollowTest(TestCase):
         self.authorized_client.force_login(FollowTest.user)
 
     def test_follow_user_unauthorized(self):
+        """Неавторизованный пользователь не может подписаться."""
         response = self.unauthorized_client.get(
-            reverse('posts:profile_follow', kwargs={'username': FollowTest.user_to_follow}),
+            reverse('posts:profile_follow', kwargs=FollowTest.kwargs_follow),
             follow=True)
-        self.assertRedirects(response,
-                             (reverse('users:login')
-                              + '?next='
-                              + reverse('posts:profile_follow', kwargs={'username': FollowTest.user_to_follow})))
+        self.assertRedirects(response, create_redirect_url(
+            'users:login',
+            'posts:profile_follow',
+            kwargs=FollowTest.kwargs_follow
+        ))
 
     def test_follow_user_authorized(self):
+        """Подписки доступны авторизованному пользователю."""
         response = self.authorized_client.get(
-            reverse('posts:profile_follow', kwargs={'username': FollowTest.user_to_follow}),
+            reverse(
+                'posts:profile_follow',
+                kwargs=FollowTest.kwargs_follow),
             follow=True)
         self.assertRedirects(
             response,
-            reverse('posts:profile', kwargs={'username': FollowTest.user_to_follow})
+            reverse(
+                'posts:profile',
+                kwargs=FollowTest.kwargs_follow)
         )
         self.assertTrue(Follow.objects.filter(
             user=FollowTest.user,
@@ -421,17 +446,23 @@ class FollowTest(TestCase):
         ).exists())
 
     def test_unfollow_authorized_user(self):
+        """Отписка доступна авторизованному пользователю."""
         follows_number = Follow.objects.all().count()
         self.authorized_client.get(
-            reverse('posts:profile_follow', kwargs={'username': FollowTest.user_to_follow}),
+            reverse(
+                'posts:profile_follow',
+                kwargs=FollowTest.kwargs_follow),
             follow=True)
-        self.assertEqual(Follow.objects.all().count(), follows_number+1)
+        self.assertEqual(Follow.objects.all().count(), follows_number + 1)
         self.authorized_client.get(
-            reverse('posts:profile_unfollow', kwargs={'username': FollowTest.user_to_follow}),
+            reverse(
+                'posts:profile_unfollow',
+                kwargs={'username': FollowTest.user_to_follow}),
             follow=True)
         self.assertEqual(Follow.objects.all().count(), follows_number)
 
     def test_new_post_for_followers(self):
+        """Новый пост отображается в ленте у подписчиков."""
         post_data = {
             'text': 'Тестовый текст',
             'group': FollowTest.group,
@@ -447,7 +478,9 @@ class FollowTest(TestCase):
         posts = response.context['page_obj']
         self.assertFalse(posts)
         self.authorized_client.get(
-            reverse('posts:profile_follow', kwargs={'username': FollowTest.user_to_follow}),
+            reverse(
+                'posts:profile_follow',
+                kwargs={'username': FollowTest.user_to_follow}),
             follow=True)
         response = self.authorized_client.get(reverse('posts:follow_index'))
         first_post = response.context['page_obj'][0]
