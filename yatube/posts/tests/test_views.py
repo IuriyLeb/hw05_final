@@ -156,7 +156,7 @@ class PaginatorViewsTest(TestCase):
         cls.posts_per_page = 10
         cls.posts_all = 13
         Post.objects.bulk_create(
-            [post for x in range(PaginatorViewsTest.posts_all)]
+            [post] * PaginatorViewsTest.posts_all
         )
         cls.links = [
             reverse('posts:index'),

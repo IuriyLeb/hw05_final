@@ -176,8 +176,5 @@ class CommentTest(TestCase):
             data=CommentTest.form_data,
             follow=True
         )
-        response = self.authorized_client.get(reverse(
-            'posts:post_detail',
-            kwargs={'post_id': CommentTest.post.id}))
-        first_comment_text = response.context['comments'][0].text
-        self.assertEqual(first_comment_text, CommentTest.form_data['text'])
+        comment = CommentTest.post.comments.get()
+        self.assertEqual(comment.text, CommentTest.form_data['text'])

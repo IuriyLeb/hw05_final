@@ -33,9 +33,9 @@ class PostURLTests(TestCase):
         """Страницы находятся по указанным url-адресам"""
         pages_url_names = [
             '/',
-            '/group/test_group/',
-            '/profile/HasNoName/',
-            '/posts/1/']
+            f'/group/{PostURLTests.group.slug}/',
+            f'/profile/{PostURLTests.user}/',
+            f'/posts/{PostURLTests.post.id}/']
 
         for address in pages_url_names:
             with self.subTest(adress=address):
@@ -72,7 +72,7 @@ class PostURLTests(TestCase):
         """URL-адрес использует соответствующий шаблон."""
         templates_url_names = {
             '/': 'posts/index.html',
-            '/group/test_group/': 'posts/group_list.html',
+            f'/group/{PostURLTests.group.slug}/': 'posts/group_list.html',
             f'/profile/{PostURLTests.user}/': 'posts/profile.html',
             f'/posts/{PostURLTests.post.id}/': 'posts/post_detail.html',
             f'/posts/{PostURLTests.post.id}/edit/': 'posts/create_post.html',
