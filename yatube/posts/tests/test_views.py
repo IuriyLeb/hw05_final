@@ -17,10 +17,12 @@ from posts.forms import PostForm
 User = get_user_model()
 
 
-def create_redirect_url(target_view, redirect_view, kwargs):
-    url = (reverse(target_view)
-           + '?next='
-           + reverse(redirect_view, kwargs=kwargs))
+def create_redirect_url(target_view, redirect_view, kwargs=None):
+    url = reverse(target_view) + '?next='
+    if kwargs:
+        url += reverse(redirect_view, kwargs=kwargs)
+        return url
+    url += reverse(redirect_view)
     return url
 
 
@@ -314,48 +316,6 @@ class UploadImageTest(TestCase):
                 self.assertTrue(response.request)
 
 
-class CommentTest(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.user = User.objects.create_user(username='Test_user')
-        cls.post = Post.objects.create(
-            text='Тестовый текст',
-            pub_date=dt.now(),
-            author=CommentTest.user,)
-
-    def setUp(self):
-        self.unauthorized_client = Client()
-        self.authorized_client = Client()
-        self.authorized_client.force_login(CommentTest.user)
-
-    def test_create_comment(self):
-        """Комментарий может создать только авторизованный пользователь."""
-        form_data = {'text': 'Test_comment_text'}
-        response = self.unauthorized_client.post(
-            reverse(
-                'posts:add_comment',
-                kwargs={'post_id': CommentTest.post.id}),
-            data=form_data,
-            follow=True)
-        self.assertRedirects(response, create_redirect_url(
-            'users:login',
-            'posts:add_comment',
-            {'post_id': CommentTest.post.id}))
-        self.authorized_client.post(
-            reverse(
-                'posts:add_comment',
-                kwargs={'post_id': CommentTest.post.id}),
-            data=form_data,
-            follow=True
-        )
-        response = self.authorized_client.get(reverse(
-            'posts:post_detail',
-            kwargs={'post_id': CommentTest.post.id}))
-        first_comment_text = response.context['comments'][0].text
-        self.assertEqual(first_comment_text, form_data['text'])
-
-
 class CacheTest(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -410,6 +370,11 @@ class FollowTest(TestCase):
             group=cls.group,
             author=cls.user_to_follow
         )
+        cls.post_data = {
+            'text': 'Тестовый текст',
+            'group': FollowTest.group,
+            'author': FollowTest.user_to_follow
+        }
 
     def setUp(self):
         self.unauthorized_client = Client()
@@ -429,6 +394,7 @@ class FollowTest(TestCase):
 
     def test_follow_user_authorized(self):
         """Подписки доступны авторизованному пользователю."""
+        follows_number = Follow.objects.all().count()
         response = self.authorized_client.get(
             reverse(
                 'posts:profile_follow',
@@ -440,6 +406,11 @@ class FollowTest(TestCase):
                 'posts:profile',
                 kwargs=FollowTest.kwargs_follow)
         )
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(
+            Follow.objects.all().count(),
+            follows_number + 1
+        )
         self.assertTrue(Follow.objects.filter(
             user=FollowTest.user,
             author=FollowTest.user_to_follow
@@ -448,11 +419,10 @@ class FollowTest(TestCase):
     def test_unfollow_authorized_user(self):
         """Отписка доступна авторизованному пользователю."""
         follows_number = Follow.objects.all().count()
-        self.authorized_client.get(
-            reverse(
-                'posts:profile_follow',
-                kwargs=FollowTest.kwargs_follow),
-            follow=True)
+        Follow.objects.create(
+            user=FollowTest.user,
+            author=FollowTest.user_to_follow
+        )
         self.assertEqual(Follow.objects.all().count(), follows_number + 1)
         self.authorized_client.get(
             reverse(
@@ -461,19 +431,26 @@ class FollowTest(TestCase):
             follow=True)
         self.assertEqual(Follow.objects.all().count(), follows_number)
 
-    def test_new_post_for_followers(self):
-        """Новый пост отображается в ленте у подписчиков."""
-        post_data = {
-            'text': 'Тестовый текст',
-            'group': FollowTest.group,
-            'author': FollowTest.user_to_follow
-        }
+    def test_new_post_for_non_followers(self):
+        """Новый пост не отображается в ленте у неподписанных."""
         Post.objects.create(
-            text=post_data['text'],
+            text=FollowTest.post_data['text'],
             pub_date=dt.now(),
-            group=post_data['group'],
-            author=post_data['author']
+            group=FollowTest.post_data['group'],
+            author=FollowTest.post_data['author']
         )
+        response = self.authorized_client.get(reverse('posts:follow_index'))
+        posts = response.context['page_obj']
+        self.assertFalse(posts)
+
+    def test_new_post_for_followers(self):
+        Post.objects.create(
+            text=FollowTest.post_data['text'],
+            pub_date=dt.now(),
+            group=FollowTest.post_data['group'],
+            author=FollowTest.post_data['author']
+        )
+        """Новый пост отображается в ленте у подписчиков."""
         response = self.authorized_client.get(reverse('posts:follow_index'))
         posts = response.context['page_obj']
         self.assertFalse(posts)
@@ -484,4 +461,4 @@ class FollowTest(TestCase):
             follow=True)
         response = self.authorized_client.get(reverse('posts:follow_index'))
         first_post = response.context['page_obj'][0]
-        self.assertEqual(first_post.text, post_data['text'])
+        self.assertEqual(first_post.text, FollowTest.post_data['text'])

@@ -3,6 +3,7 @@ from http import HTTPStatus
 
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
+
 from posts.models import Group, Post
 
 User = get_user_model()
@@ -59,7 +60,7 @@ class PostURLTests(TestCase):
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
 
     def test_post_create_url_redirect_anonymous_on_admin_login(self):
-        """Страница по адресу /task/ перенаправит анонимного
+        """Страница по адресу /create/ перенаправит анонимного
         пользователя на страницу логина.
         """
         response = self.guest_client.get('/create/', follow=True)
@@ -76,6 +77,7 @@ class PostURLTests(TestCase):
             f'/posts/{PostURLTests.post.id}/': 'posts/post_detail.html',
             f'/posts/{PostURLTests.post.id}/edit/': 'posts/create_post.html',
             '/create/': 'posts/create_post.html',
+            '/follow/': 'posts/follow.html',
         }
         for address, template in templates_url_names.items():
             with self.subTest(adress=address):

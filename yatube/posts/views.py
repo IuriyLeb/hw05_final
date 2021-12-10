@@ -3,7 +3,6 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 
-
 from .forms import PostForm, CommentForm
 from .models import Group, Post, User, Follow
 
@@ -36,14 +35,10 @@ def profile(request, username):
     user_obj = get_object_or_404(User, username=username)
     posts = user_obj.posts.all()
     posts_number = posts.count()
-    if (request.user.is_authenticated
-            and Follow.objects.filter(
-                user=request.user,
-                author=user_obj
-            ).exists()):
-        following = True
-    else:
-        following = False
+    following = (request.user.is_authenticated
+                 and Follow.objects.filter(
+                     user=request.user,
+                     author=user_obj).exists())
     context = {
         'username': user_obj,
         'posts_number': posts_number,
@@ -122,7 +117,7 @@ def add_comment(request, post_id):
 
 @login_required
 def follow_index(request):
-    user = get_object_or_404(User, username=request.user.username)
+    user = request.user
     posts = Post.objects.filter(author__following__user=user).all()
     context = {
         'page_obj': pagination(request, posts)
@@ -132,21 +127,19 @@ def follow_index(request):
 
 @login_required
 def profile_follow(request, username):
-    user = get_object_or_404(User, username=request.user.username)
+    user = request.user
     user_to_follow = get_object_or_404(User, username=username)
     if user != user_to_follow:
-        if not Follow.objects.filter(
-                user=user,
-                author=user_to_follow
-        ).exists():
-            Follow.objects.create(user=user, author=user_to_follow)
+        obj, created = Follow.objects.get_or_create(
+            user=user,
+            author=user_to_follow)
     return redirect('posts:profile', username=user_to_follow)
 
 
 @login_required
 def profile_unfollow(request, username):
     # Дизлайк, отписка
-    user = get_object_or_404(User, username=request.user.username)
+    user = request.user
     user_to_follow = get_object_or_404(User, username=username)
     if user != user_to_follow:
         Follow.objects.filter(user=user, author=user_to_follow).delete()

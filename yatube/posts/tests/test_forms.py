@@ -1,4 +1,5 @@
 from http import HTTPStatus
+from datetime import datetime as dt
 
 import shutil
 import tempfile
@@ -10,6 +11,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 
 from posts.models import Post, User, Group
+from posts.tests.test_views import create_redirect_url
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
@@ -129,7 +131,53 @@ class PostFormTest(TestCase):
         )
         self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertEqual(Post.objects.count(), posts_count)
-        self.assertRedirects(response,
-                             (reverse('users:login')
-                              + '?next='
-                              + reverse('posts:post_create')))
+        self.assertRedirects(response, create_redirect_url(
+            'users:login',
+            'posts:post_create'))
+
+
+class CommentTest(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = User.objects.create_user(username='Test_user')
+        cls.post = Post.objects.create(
+            text='Тестовый текст',
+            pub_date=dt.now(),
+            author=CommentTest.user,)
+        cls.form_data = {'text': 'Test_comment_text'}
+
+    def setUp(self):
+        self.unauthorized_client = Client()
+        self.authorized_client = Client()
+        self.authorized_client.force_login(CommentTest.user)
+
+    def test_create_comment_unauthorized(self):
+        """При попытке оставить комментарий
+        неавторизованный пользователь перенаправляется
+         на страницу логина."""
+        response = self.unauthorized_client.post(
+            reverse(
+                'posts:add_comment',
+                kwargs={'post_id': CommentTest.post.id}),
+            data=CommentTest.form_data,
+            follow=True)
+        self.assertRedirects(response, create_redirect_url(
+            'users:login',
+            'posts:add_comment',
+            {'post_id': CommentTest.post.id}))
+
+    def test_create_comment(self):
+        """Комментарий может создать только авторизованный пользователь."""
+        self.authorized_client.post(
+            reverse(
+                'posts:add_comment',
+                kwargs={'post_id': CommentTest.post.id}),
+            data=CommentTest.form_data,
+            follow=True
+        )
+        response = self.authorized_client.get(reverse(
+            'posts:post_detail',
+            kwargs={'post_id': CommentTest.post.id}))
+        first_comment_text = response.context['comments'][0].text
+        self.assertEqual(first_comment_text, CommentTest.form_data['text'])
