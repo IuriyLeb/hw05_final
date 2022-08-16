@@ -1,22 +1,59 @@
 ## YaTube 
-# Description
-Service that provides such functions as:
-* create posts
-* add commentaries
-* follows the authors you want to
+YaTube is a service for creating posts. Users can leave comments, as well as subscribe to the authors they like.
+
 # Installation
-1. clone repository in your local mashine
-2. create and activate virualenv
 
-`python -m venv venv`
+Сlone repository in your local mashine
 
-`source venv/Scripts/activate`
-3. create and make migrations
+```bash
+git clone https://github.com/IuriyLeb/hw05_final.git
+```
 
-`python manage.py makemigrations`
+Create and activate virualenv
 
-`python manage.py migrate`
+```bash
+python -m venv venv
+```
 
-4. run project on your local machine
+```bash
+source venv/Scripts/activate
+```
 
-`python manage.py runserver`
+Then you need to install requirements
+
+```bash
+pip install -r requirements.txt
+```
+
+Create and make migrations
+
+```bash
+python manage.py makemigrations
+```
+
+```bash
+python manage.py migrate
+```
+
+Run project on your local machine
+
+```bash
+python manage.py runserver
+```
+
+### About us
+Author: [Lebeda Iuriy](https://github.com/IuriyLeb)
+
+This project was done as a part of learning in [Yandex.Practicum](https://practicum.yandex.ru/) courses.
+
+If you have any suggestions/comments, open pull requests or contact me by email.
+
+### Contributing
+
+
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+
+Please make sure to update tests as appropriate.
+
+### License
+[MIT](https://choosealicense.com/licenses/mit/)
