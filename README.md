@@ -6,7 +6,7 @@ YaTube is a service for creating posts. Users can leave comments, as well as sub
 Сlone repository in your local mashine
 
 ```bash
-git clone https://github.com/IuriyLeb/hw05_final.git
+git clone https://github.com/IuriyLeb/yatube_final.git
 ```
 
 Create and activate virualenv
